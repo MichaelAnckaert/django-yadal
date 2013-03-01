@@ -58,11 +58,12 @@ def _handle_user_login(request, user_data):
         See if we already have a user with a similar email address, otherwise create a user
 
     TODO: send signal to allow catching of user data by other code
+
+    TODO: block login from is_active=False users
     """
     try:
         # TODO: only handle users with verified_email: True
         u = User.objects.get(email__exact=user_data['email'])
-        authenticate()
     except ObjectDoesNotExist:
         if settings.YADAL_USER_REQUIRED:
             return HttpResponseRedirect(settings.YADAL_LOGIN_NOT_ALLOWED)
@@ -70,6 +71,11 @@ def _handle_user_login(request, user_data):
             # Registration of new users through oAuth is allowed, create a suitable user object
             u = User(username=user_data['email'], email=user_data['email'])
             u.save()
+
+    if u.is_active:
+        authenticate()
+    else:
+        return HttpResponseRedirect(settings.YADAL_LOGIN_NOT_ALLOWED)
 
     if settings.YADAL_UPDATE_PROFILE:
         # Update profile based on values
@@ -80,8 +86,8 @@ def _handle_user_login(request, user_data):
     u.backend = 'django.contrib.auth.backends.ModelBackend'
     login(request, u)
 
-    # Redirect to YADAL_LOGIN_SUCCESS
-    return HttpResponseRedirect(settings.YADAL_LOGIN_SUCCESS)
+    # Redirect to LOGIN_REDIRECT_URL
+    return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
 
 def oauth(request):
     """Handle a request to login via an oAuth2 provider
